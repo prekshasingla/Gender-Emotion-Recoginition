@@ -164,39 +164,16 @@ spl <- sample.split(data$label, 0.7)
 train <- subset(data, spl == TRUE)
 test <- subset(data, spl == FALSE)
 
-genderLog <- glm(label ~ ., data=train, family='binomial')
 genderCART <- rpart(label ~ ., data=train, method='class')
 prp(genderCART)
 genderForest <- randomForest(label ~ ., data=train)
 
-# Accuracy: 0.50
-table(train$label)
-1107 / nrow(train)
-
-# Accuracy: 0.50
-table(test$label)
-475 / nrow(test)
-
-# Accuracy: 0.72
-predictLog <- predict(genderLog, type='response')
-table(train$label, predictLog >= 0.5)
-(814 + 777) / nrow(train)
-
-# Accuracy: 0.71
-predictLog2 <- predict(genderLog, newdata=test, type='response')
-table(test$label, predictLog2 >= 0.5)
-(339 + 335) / nrow(test)
-
-# Accuracy: 0.81
 predictCART <- predict(genderCART)
 predictCART.prob <- predictCART[,2]
 table(train$label, predictCART.prob >= 0.5)
-(858 + 941) / nrow(train)
 
-# Accuracy: 0.78
 predictCART2 <- predict(genderCART, newdata=test)
 predictCART2.prob <- predictCART2[,2]
-table(test$label, predictCART2.prob >= 0.5)
 
 predictForest <- predict(genderForest, newdata=train)
 table(train$label, predictForest)

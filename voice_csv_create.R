@@ -26,30 +26,23 @@ specan3 <- function(X, bp = c(0,22), wl = 2048, threshold = 5){
                                                                         "start", "end") %in% colnames(X))], collapse=", "), "column(s) not found in data frame"))
   } else  stop("X is not a data frame")
   
-  #if there are NAs in start or end stop
   if(any(is.na(c(end, start)))) stop("NAs found in start and/or end")  
   
-  #if end or start are not numeric stop
   if(all(class(end) != "numeric" & class(start) != "numeric")) stop("'end' and 'selec' must be numeric")
   
-  #if any start higher than end stop
   if(any(end - start<0)) stop(paste("The start is higher than the end in", length(which(end - start<0)), "case(s)"))  
   
-  #if any selections longer than 20 secs stop
   if(any(end - start>20)) stop(paste(length(which(end - start>20)), "selection(s) longer than 20 sec"))  
   options( show.error.messages = TRUE)
   
-  #if bp is not vector or length!=2 stop
   if(!is.vector(bp)) stop("'bp' must be a numeric vector of length 2") else{
     if(!length(bp) == 2) stop("'bp' must be a numeric vector of length 2")}
   
-  #return warning if not all sound files were found
   fs <- list.files(path = getwd(), pattern = ".wav$", ignore.case = TRUE)
   if(length(unique(sound.files[(sound.files %in% fs)])) != length(unique(sound.files))) 
     cat(paste(length(unique(sound.files))-length(unique(sound.files[(sound.files %in% fs)])), 
               ".wav file(s) not found"))
   
-  #count number of sound files in working directory and if 0 stop
   d <- which(sound.files %in% fs) 
   if(length(d) == 0){
     stop("The .wav files are not in the working directory")
@@ -63,15 +56,12 @@ specan3 <- function(X, bp = c(0,22), wl = 2048, threshold = 5){
   x <- as.data.frame(lapply(1:length(start), function(i) { 
     r <- tuneR::readWave(file.path(getwd(), sound.files[i]), from = start[i], to = end[i], units = "seconds") 
     
-    b<- bp #in case bp its higher than can be due to sampling rate
+    b<- bp 
     if(b[2] > ceiling(r@samp.rate/2000) - 1) b[2] <- ceiling(r@samp.rate/2000) - 1 
     
-    
-    #frequency spectrum analysis
     songspec <- seewave::spec(r, f = r@samp.rate, plot = FALSE)
     analysis <- seewave::specprop(songspec, f = r@samp.rate, flim = c(0, 280/1000), plot = FALSE)
     
-    #save parameters
     meanfreq <- analysis$mean/1000
     sd <- analysis$sd/1000
     median <- analysis$median/1000
@@ -85,17 +75,13 @@ specan3 <- function(X, bp = c(0,22), wl = 2048, threshold = 5){
     mode <- analysis$mode/1000
     centroid <- analysis$cent/1000
     
-    #Frequency with amplitude peaks
-    peakf <- 0#seewave::fpeaks(songspec, f = r@samp.rate, wl = wl, nmax = 3, plot = FALSE)[1, 1]
-    
-    #Fundamental frequency parameters
+    peakf <- 0
     ff <- seewave::fund(r, f = r@samp.rate, ovlp = 50, threshold = threshold, 
                         fmax = 280, ylim=c(0, 280/1000), plot = FALSE, wl = wl)[, 2]
     meanfun<-mean(ff, na.rm = T)
     minfun<-min(ff, na.rm = T)
     maxfun<-max(ff, na.rm = T)
     
-    #Dominant frecuency parameters
     y <- seewave::dfreq(r, f = r@samp.rate, wl = wl, ylim=c(0, 280/1000), ovlp = 0, plot = F, threshold = threshold, bandpass = b * 1000, fftw = TRUE)[, 2]
     meandom <- mean(y, na.rm = TRUE)
     mindom <- min(y, na.rm = TRUE)
@@ -103,7 +89,6 @@ specan3 <- function(X, bp = c(0,22), wl = 2048, threshold = 5){
     dfrange <- (maxdom - mindom)
     duration <- (end[i] - start[i])
     
-    #modulation index calculation
     changes <- vector()
     for(j in which(!is.na(y))){
       change <- abs(y[j] - y[j + 1])
@@ -111,12 +96,9 @@ specan3 <- function(X, bp = c(0,22), wl = 2048, threshold = 5){
     }
     if(mindom==maxdom) modindx<-0 else modindx <- mean(changes, na.rm = T)/dfrange
     
-    #save results
     return(c(duration, meanfreq, sd, median, Q25, Q75, IQR, skew, kurt, sp.ent, sfm, mode, 
              centroid, peakf, meanfun, minfun, maxfun, meandom, mindom, maxdom, dfrange, modindx))
   }))
-  
-  #change result names
   
   rownames(x) <- c("duration", "meanfreq", "sd", "median", "Q25", "Q75", "IQR", "skew", "kurt", "sp.ent", 
                    "sfm","mode", "centroid", "peakf", "meanfun", "minfun", "maxfun", "meandom", "mindom", "maxdom", "dfrange", "modindx")
@@ -128,78 +110,82 @@ specan3 <- function(X, bp = c(0,22), wl = 2048, threshold = 5){
 }
 
 processFolder <- function(folderName) {
-  # Start with empty data.frame.
   data <- data.frame()
   
-  # Get list of files in the folder.
   list <- list.files(pattern = '\\.wav')
-  list
   
-  # Add file list to data.frame for processing.
   for (fileName in list) {
-    #print('hi')
     row <- data.frame(fileName, 0, 0, 20)
     data <- rbind(data, row)
   }
   
-  # Set column names.
   names(data) <- c('sound.files', 'selec', 'start', 'end')
   
-  # Move into folder for processing.
-  #setwd(folderName)
-  
-  # Process files.
   acoustics <- specan3(data)
-  
-  # Move back into parent folder.
   setwd('..')
-  
   acoustics
 }
 
 gender <- function(filePath) {
-  # Setup paths.
   currentPath <- getwd()
   fileName <- basename(filePath)
   print(filePath)
   path <- dirname(filePath)
   
-  # Set directory to read file.
   setwd(path)
-  
-  # Start with empty data.frame.
   data <- data.frame(fileName, 0, 0, 20)
   
-  # Set column names.
   names(data) <- c('sound.files', 'selec', 'start', 'end')
   
-  # Process files.
   acoustics <- specan3(data)
-  
-  # Restore path.
   setwd(currentPath)
 }
 
 
-# Load data
 males <- processFolder('male')
 females <- processFolder('female')
 
-# Set labels.
 males$label <- 1
 females$label <- 2
 data <- rbind(males, females)
 data$label <- factor(data$label, labels=c('male', 'female'))
 
-# Remove unused columns.
 data$duration <- NULL
 data$sound.files <- NULL
 data$selec <- NULL
 data$peakf <- NULL
 
-# Remove rows containing NA's.
 data <- data[complete.cases(data)]
 
-# Write out csv dataset.
 write.csv(data, file='voice1.csv', sep=',', row.names=F)
 
+set.seed(777)
+spl <- sample.split(data$label, 0.7)
+train <- subset(data, spl == TRUE)
+test <- subset(data, spl == FALSE)
+
+genderCART <- rpart(label ~ ., data=train, method='class')
+prp(genderCART)
+genderForest <- randomForest(label ~ ., data=train)
+
+predictCART <- predict(genderCART)
+predictCART.prob <- predictCART[,2]
+table(train$label, predictCART.prob >= 0.5)
+
+predictCART2 <- predict(genderCART, newdata=test)
+predictCART2.prob <- predictCART2[,2]
+
+predictForest <- predict(genderForest, newdata=train)
+table(train$label, predictForest)
+
+predictForest <- predict(genderForest, newdata=test)
+table(test$label, predictForest)
+
+set.seed(777)
+genderSvm <- svm(label ~ ., data=train, gamma=0.21, cost=8)
+
+predictSvm <- predict(genderSvm, train)
+table(predictSvm, train$label)
+
+predictSvm <- predict(genderSvm, test)
+table(predictSvm, test$label)
