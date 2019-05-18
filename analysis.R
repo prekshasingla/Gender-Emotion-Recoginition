@@ -167,7 +167,7 @@ getEmotion <- function(test1){
   genderSvm <- svm(label ~ ., data=train, gamma=0.21, cost=8, probability=TRUE)
   newdata <- data.frame(test1)
   predictSvm <- predict(genderSvm, newdata, probability=TRUE)
-  
+  #predictForest
   return (predictForest1)
 }
 

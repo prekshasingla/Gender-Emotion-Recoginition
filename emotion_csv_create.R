@@ -157,7 +157,7 @@ data$peakf <- NULL
 
 data <- data[complete.cases(data),]
 
-write.csv(data, file='emotion.csv', sep=',', row.names=F)
+write.csv(data, file='emotion1.csv', sep=',', row.names=F)
 
 set.seed(777)
 spl <- sample.split(data$label, 0.7)
